@@ -1,0 +1,51 @@
+name: "Deploy"
+
+inputs:
+  aws-access-key-id:
+    required: true
+
+  aws-secret-access-key:
+    required: true
+
+  aws-region:
+    required: true
+
+  aws-eks-cluster:
+    required: true
+
+  service:
+    required: true
+
+  environment:
+    required: true
+    options:
+      - dev
+      - prod
+
+  image:
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/checkout@v4
+
+    - uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ inputs.aws-access-key-id }}
+        aws-secret-access-key: ${{ inputs.aws-secret-access-key }}
+        aws-region: ${{ inputs.aws-region }}
+
+    - shell: bash
+      run: >
+        aws eks update-kubeconfig
+        --region ${{ inputs.aws-region }}
+        --name ${{ inputs.aws-eks-cluster }}
+
+    - shell: bash
+      run: >
+        helm upgrade ${{ inputs.service }} helm
+        --install
+        --set image=${{ inputs.image }}
+        --namespace ${{ inputs.environment }}
+        --values helm/${{ inputs.environment }}.values.yaml
